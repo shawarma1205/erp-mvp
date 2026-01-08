@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+
+# Django local files
+*.sqlite3
+.env
+
+# IDE / OS
+.idea/
+.DS_Store
