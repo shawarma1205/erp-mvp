@@ -8,7 +8,7 @@
   <h1>Quote Batch: {{ batch.name }}</h1>
 
   <p>
-    Language:
+    {{ T.language }}:
     <a href="?lang=ko">KO</a> |
     <a href="?lang=en">EN</a>
   </p>
@@ -23,36 +23,36 @@
   </p>
 
   <p>
-    <a href="{% url 'pricing:quote_batch_export_csv' batch.id %}">Download CSV</a>
+    <a href="{% url 'pricing:quote_batch_export_csv' batch.id %}">{{ T.download_csv }}</a>
   </p>
 
   <hr>
 
-  <h2>Batch Settings</h2>
+  <h2>{{ T.batch_settings }}</h2>
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="form_type" value="batch_settings">
 
-    <label>Company margin rate (e.g. 0.20):</label>
+    <label>{{ T.company_margin_rate }}:</label>
     <input name="company_margin_rate" value="{{ batch.company_margin_rate }}" required>
     <br><br>
 
-    <label>Supplier markup rate (e.g. 0.05):</label>
+    <label>{{ T.supplier_markup_rate }}:</label>
     <input name="supplier_markup_rate" value="{{ batch.supplier_markup_rate }}" required>
     <br><br>
 
-    <label>Transport mode:</label>
+    <label>{{ T.transport_mode }}:</label>
     <select name="transport_mode">
       <option value="OCEAN" {% if batch.transport_mode == "OCEAN" %}selected{% endif %}>OCEAN</option>
       <option value="AIR" {% if batch.transport_mode == "AIR" %}selected{% endif %}>AIR</option>
     </select>
     <br><br>
 
-    <label>Transport KRW per kg:</label>
+    <label>{{ T.transport_krw_per_kg }}:</label>
     <input name="transport_krw_per_kg" value="{{ batch.transport_krw_per_kg }}" required>
     <br><br>
 
-    <label>Rounding unit (PHP):</label>
+    <label>{{ T.rounding_unit_php }}:</label>
     <input name="rounding_unit_php" value="{{ batch.rounding_unit_php }}" required>
     <br><br>
 
@@ -61,35 +61,40 @@
 
   <hr>
 
-  <h2>Add Quote Line</h2>
+  <h2>{{ T.add_quote_line }}</h2>
   <form method="post">
     {% csrf_token %}
-    <label>SKU Code:</label>
+    <label>{{ T.sku_code }}:</label>
     <input name="sku_code" placeholder="SALMON-001" required>
     <br><br>
 
-    <label>Qty Units:</label>
+    <label>{{ T.qty_units }}:</label>
     <input name="qty_units" value="1" required>
     <br><br>
 
-    <label>Supplier Cost (KRW per unit):</label>
+    <label>{{ T.supplier_cost_krw_per_unit }}:</label>
     <input name="supplier_cost_krw_per_unit" value="0" required>
     <br><br>
 
-    <label>Billable Weight (KG total):</label>
+    <label>{{ T.billable_weight_kg_total }}:</label>
     <input name="billable_weight_kg_total" value="0" required>
     <br><br>
 
-    <label>Other Cost (PHP total):</label>
+    <label>{{ T.other_cost_php_total }}:</label>
     <input name="other_cost_php_total" value="0">
     <br><br>
+
+    <label>{{ T.manual_price_php_per_unit }}:</label>
+    <input name="manual_price_php_per_unit" value="">
+    <br><br>
+
 
     <button type="submit">Create</button>
   </form>
 
   <hr>
 
-  <h2>Lines</h2>
+  <h2>{{ T.lines }}</h2>
   <table border="1" cellpadding="6">
     <thead>
       <tr>
@@ -97,9 +102,14 @@
         <th>SKU</th>
         <th>Name</th>
         <th>Qty</th>
+
         <th>Supplier KRW/unit</th>
         <th>Weight KG</th>
-        <th>Base PHP/unit</th>
+
+        <th>{{ T.suggested_price }}</th>
+        <th>{{ T.manual_price }}</th>
+        <th>{{ T.price_diff_pct }}</th>
+
         <th>Final PHP/unit</th>
         <th>Action</th>
       </tr>
@@ -108,32 +118,43 @@
     <tbody>
       {% for ln in lines %}
       <tr>
-        <td>{{ ln.created_at }}</td>
-        <td>{{ ln.product.sku_code }}</td>
-        <td>
-          {% if lang == "en" %}
-            {{ ln.product.name_en }}
-          {% else %}
-            {{ ln.product.name_ko }}
-          {% endif %}
-        </td>
-        <td>{{ ln.qty_units }}</td>
-        <td>{{ ln.supplier_cost_krw_per_unit }}</td>
-        <td>{{ ln.billable_weight_kg_total }}</td>
-        <td>{{ ln.base_price_php_per_unit }}</td>
-        <td><b>{{ ln.final_price_php_per_unit }}</b></td>
+  <td>{{ ln.obj.created_at }}</td>
+  <td>{{ ln.obj.product.sku_code }}</td>
 
-        <td>
-          <form method="post" action="{% url 'pricing:quote_line_delete' batch.id ln.id %}">
-            {% csrf_token %}
-            <button type="submit">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="9">No lines yet.</td>
-      </tr>
+  <td>
+    {% if lang == "en" %}
+      {{ ln.obj.product.name_en }}
+    {% else %}
+      {{ ln.obj.product.name_ko }}
+    {% endif %}
+  </td>
+
+  <td>{{ ln.obj.qty_units }}</td>
+  <td>{{ ln.obj.supplier_cost_krw_per_unit }}</td>
+  <td>{{ ln.obj.billable_weight_kg_total }}</td>
+
+  <td>{{ ln.suggested_price }}</td>
+
+  <td>{{ ln.obj.manual_price_php_per_unit|default:"-" }}</td>
+
+  <td>
+    {% if ln.diff_pct is not None %}
+      {{ ln.diff_pct|floatformat:1 }}%
+    {% else %}
+      -
+    {% endif %}
+  </td>
+
+  <td><b>{{ ln.obj.final_price_php_per_unit }}</b></td>
+
+  <td>
+    <form method="post" action="{% url 'pricing:quote_line_delete' batch.id ln.obj.id %}">
+      {% csrf_token %}
+      <button type="submit">Delete</button>
+    </form>
+  </td>
+</tr>
+
       {% endfor %}
     </tbody>
   </table>

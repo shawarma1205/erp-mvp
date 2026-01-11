@@ -25,10 +25,15 @@ def compute_quote_line(line: QuoteLine) -> None:
     supplier_pay_krw_per_unit = line.supplier_cost_krw_per_unit * (Decimal("1") + batch.supplier_markup_rate)
     supplier_pay_php_per_unit = supplier_pay_krw_per_unit * fx
 
-    # 2) transport total + per unit
-    transport_krw_total = line.billable_weight_kg_total * batch.transport_krw_per_kg
+    # 2) transport cost (KRW -> PHP)
+    transport_krw_total = batch.transport_krw_per_kg * line.billable_weight_kg_total
     transport_php_total = transport_krw_total * fx
-    transport_php_per_unit = transport_php_total / line.qty_units
+
+    # divide by qty to get per-unit transport
+    if line.qty_units and line.qty_units != 0:
+        transport_php_per_unit = transport_php_total / line.qty_units
+    else:
+        transport_php_per_unit = Decimal("0")
 
     # 3) other cost per unit
     other_php_per_unit = (line.other_cost_php_total or Decimal("0")) / line.qty_units
@@ -48,3 +53,6 @@ def compute_quote_line(line: QuoteLine) -> None:
     line.transport_php_per_unit = transport_php_per_unit
     line.base_price_php_per_unit = base_price_php_per_unit
     line.final_price_php_per_unit = final_price_php_per_unit
+# Manual override: if set, use manual price as final.
+    if line.manual_price_php_per_unit is not None:
+        line.final_price_php_per_unit = line.manual_price_php_per_unit

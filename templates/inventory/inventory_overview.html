@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Inventory Overview</title>
+</head>
+<body>
+  <h1>Inventory Overview</h1>
+
+  <h2>Balances</h2>
+
+  <form method="get">
+    <label>Search (SKU/Name):</label>
+    <input name="q" value="{{ q }}" placeholder="SALMON or 연어">
+    <button type="submit">Search</button>
+  </form>
+
+  <p>
+    <a href="{% url 'inventory:export_balances_csv' %}?q={{ q }}">Download Balances CSV</a>
+  </p>
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Name(EN)</th>
+        <th>Name(KO)</th>
+        <th>Base Unit</th>
+        <th>On Hand Qty</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in balances %}
+      <tr>
+        <td>{{ b.product.sku_code }}</td>
+        <td>{{ b.product.name_en }}</td>
+        <td>{{ b.product.name_ko }}</td>
+        <td>{{ b.product.base_unit }}</td>
+        <td><b>{{ b.on_hand_qty_units }}</b></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No balances.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>Recent Stock Movements</h2>
+
+  <form method="get">
+    <input type="hidden" name="q" value="{{ q }}">
+
+    <label>Type:</label>
+    <select name="move_type">
+      <option value="" {% if not move_type %}selected{% endif %}>ALL</option>
+      <option value="IN" {% if move_type == "IN" %}selected{% endif %}>IN</option>
+      <option value="OUT" {% if move_type == "OUT" %}selected{% endif %}>OUT</option>
+      <option value="ADJ" {% if move_type == "ADJ" %}selected{% endif %}>ADJ</option>
+    </select>
+
+    <label>From:</label>
+    <input name="move_from" value="{{ move_from }}" placeholder="YYYY-MM-DD">
+
+    <label>To:</label>
+    <input name="move_to" value="{{ move_to }}" placeholder="YYYY-MM-DD">
+
+    <button type="submit">Filter</button>
+  </form>
+
+  <p>
+    <a href="{% url 'inventory:export_movements_csv' %}?move_type={{ move_type }}&move_from={{ move_from }}&move_to={{ move_to }}">
+      Download Movements CSV
+    </a>
+  </p>
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Type</th>
+        <th>SKU</th>
+        <th>Name(EN)</th>
+        <th>Name(KO)</th>
+        <th>Qty</th>
+        <th>Ref</th>
+        <th>Memo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movements %}
+      <tr>
+        <td>{{ m.created_at }}</td>
+        <td><b>{{ m.movement_type }}</b></td>
+        <td>{{ m.product.sku_code }}</td>
+        <td>{{ m.product.name_en }}</td>
+        <td>{{ m.product.name_ko }}</td>
+        <td>{{ m.qty_units }}</td>
+        <td>{{ m.ref_table }} #{{ m.ref_id }}</td>
+        <td>{{ m.memo }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8">No movements.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</body>
+</html>
