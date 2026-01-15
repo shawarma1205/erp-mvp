@@ -7,6 +7,7 @@ from django.utils import timezone
 from sales.models import SalesInvoice
 from inventory.models import InventoryBalance, StockMovement
 
+
 def _suggested_price_from_quote(invoice: SalesInvoice, product_id: int):
     """
     invoice.quote_batch가 지정되어 있고,
@@ -29,46 +30,76 @@ def _suggested_price_from_quote(invoice: SalesInvoice, product_id: int):
     return ql.final_price_php_per_unit
 
 
-def _ensure_balance(product_id: int) -> InventoryBalance:
-    bal, _ = InventoryBalance.objects.get_or_create(product_id=product_id, defaults={"on_hand_qty_units": Decimal("0")})
-    return bal
+def _ensure_balance_locked(product_id: int) -> InventoryBalance:
+    """
+    InventoryBalance를 '락 걸고' 가져온다.
+    - 존재하면: select_for_update()로 row lock
+    - 없으면: 생성 후 다시 select_for_update()로 가져옴
+    """
+    try:
+        return InventoryBalance.objects.select_for_update().get(product_id=product_id)
+    except InventoryBalance.DoesNotExist:
+        InventoryBalance.objects.create(
+            product_id=product_id,
+            on_hand_qty_units=Decimal("0"),
+            avg_cost_php_per_unit=Decimal("0"),
+            last_updated_at=timezone.now(),
+        )
+        return InventoryBalance.objects.select_for_update().get(product_id=product_id)
 
 
 @transaction.atomic
 def issue_invoice(invoice_id: int) -> SalesInvoice:
+    # invoice row lock
     invoice = SalesInvoice.objects.select_for_update().get(id=invoice_id)
 
+    # 이미 발행/취소된 경우는 그대로 반환 (idempotent)
     if invoice.status != SalesInvoice.DRAFT:
-        return invoice  # 이미 발행/취소된 경우는 그대로 반환
+        return invoice
 
-    # 1) 라인별로 suggested/final 확정 + 재고 차감
+    # ✅ 방어막: status는 DRAFT인데, 과거에 OUT이 이미 생긴 경우 (데이터 꼬임/중복 클릭 흔적)
+    already_out = StockMovement.objects.filter(
+        movement_type=StockMovement.OUT,
+        ref_table="sales_salesinvoice",
+        ref_id=invoice.id,
+    ).exists()
+    if already_out:
+        raise ValueError(
+            f"Invoice {invoice.invoice_no} already has OUT stock movements. "
+            f"ISSUE is blocked to prevent double deduction."
+        )
+
+    # 라인 lock
     lines = list(invoice.lines.select_related("product").select_for_update())
 
-    # (안전) 라인 없으면 발행 막기
     if not lines:
         raise ValueError("Invoice has no lines.")
 
-    # 1-A) 먼저 가격 확정
+    # 1) 가격 확정(락) — final_unit_price_php가 없으면 ISSUE 불가
     for ln in lines:
         if ln.suggested_unit_price_php is None:
             ln.suggested_unit_price_php = _suggested_price_from_quote(invoice, ln.product_id)
 
-        # manual이 있으면 manual이 final, 없으면 suggested가 final
         if ln.manual_unit_price_php is not None:
             ln.final_unit_price_php = ln.manual_unit_price_php
         else:
             ln.final_unit_price_php = ln.suggested_unit_price_php
 
+        if ln.final_unit_price_php is None:
+            raise ValueError(
+                f"Missing final unit price for {ln.product.sku_code}. "
+                f"Set Adjusted(manual) price or ensure QuoteBatch has QuoteLine for this product."
+            )
+
         ln.save(update_fields=["suggested_unit_price_php", "final_unit_price_php"])
 
-    # 1-B) 재고 차감 (OUT)
+    # 2) 재고 차감(OUT) — balance도 row lock
     for ln in lines:
         if not ln.qty_units or ln.qty_units <= 0:
             continue
 
-        bal = _ensure_balance(ln.product_id)
+        bal = _ensure_balance_locked(ln.product_id)
 
-        # 재고 부족 방지 (원하면 나중에 '마이너스 허용' 옵션 추가 가능)
         if bal.on_hand_qty_units < ln.qty_units:
             raise ValueError(
                 f"Insufficient stock for {ln.product.sku_code}. "
@@ -88,7 +119,7 @@ def issue_invoice(invoice_id: int) -> SalesInvoice:
             memo=f"Invoice {invoice.invoice_no} issued",
         )
 
-    # 2) invoice 상태 변경
+    # 3) invoice 상태 변경 (같은 트랜잭션 안에서)
     invoice.status = SalesInvoice.ISSUED
     invoice.save(update_fields=["status"])
     return invoice

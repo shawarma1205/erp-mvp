@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Customer Detail Report</title>
+</head>
+<body>
+  <h1>Customer Detail Report (ISSUED invoices)</h1>
+
+  <p>
+    <b>Customer:</b> {{ customer }}<br>
+    <b>Period:</b> {{ date_from }} ~ {{ date_to }}
+  </p>
+
+  <p>
+    <a href="{% url 'sales:customer_detail_report_export_csv' customer.id %}?date_from={{ date_from }}&date_to={{ date_to }}">
+      Download CSV
+    </a>
+  </p>
+
+  <h2>By Product</h2>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Product(EN)</th>
+        <th>Product(KO)</th>
+        <th>Total Qty</th>
+        <th>Total Amount (PHP)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.product__sku_code }}</td>
+        <td>{{ r.product__name_en }}</td>
+        <td>{{ r.product__name_ko }}</td>
+        <td><b>{{ r.total_qty }}</b></td>
+        <td><b>{{ r.total_amount }}</b></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No data.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>Invoices (trace)</h2>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Invoice No</th>
+        <th>Status</th>
+        <th>Export</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td>{{ inv.issue_date }}</td>
+        <td>
+          <a href="{% url 'sales:invoice_detail' inv.id %}?date_from={{ date_from }}&date_to={{ date_to }}">
+            {{ inv.invoice_no }}
+          </a>
+        </td>
+        <td>{{ inv.status }}</td>
+        <td>
+          <a href="{% url 'sales:invoice_detail_export_csv' inv.id %}">
+            ⬇ CSV
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3">No invoices.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

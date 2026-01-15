@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Product Performance</title>
+</head>
+<body>
+  <h1>Product Performance (ISSUED)</h1>
+
+  <form method="get">
+    <label>Date from:</label>
+    <input name="date_from" value="{{ date_from }}" placeholder="YYYY-MM-DD">
+    <label>Date to:</label>
+    <input name="date_to" value="{{ date_to }}" placeholder="YYYY-MM-DD">
+
+    <label>Channel (optional):</label>
+    <select name="channel">
+      <option value="" {% if not channel %}selected{% endif %}>ALL</option>
+      <option value="DIRECT" {% if channel == "DIRECT" %}selected{% endif %}>DIRECT</option>
+      <option value="ONLINE" {% if channel == "ONLINE" %}selected{% endif %}>ONLINE</option>
+      <option value="AGENT" {% if channel == "AGENT" %}selected{% endif %}>AGENT</option>
+      <option value="OTHER" {% if channel == "OTHER" %}selected{% endif %}>OTHER</option>
+    </select>
+
+    <button type="submit">Filter</button>
+  </form>
+
+  <p>
+    <a href="{% url 'sales:product_performance_export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}&channel={{ channel }}">
+      Download CSV
+    </a>
+  </p>
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Name(EN)</th>
+        <th>Name(KO)</th>
+        <th>Qty Sold</th>
+        <th>Sales (PHP)</th>
+        <th>#Invoices</th>
+        <th>Avg Unit Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.sku }}</td>
+        <td>{{ r.name_en }}</td>
+        <td>{{ r.name_ko }}</td>
+        <td><b>{{ r.qty_sold }}</b></td>
+        <td><b>{{ r.sales_php }}</b></td>
+        <td>{{ r.invoice_count }}</td>
+        <td>{{ r.avg_unit_price }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">No data.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

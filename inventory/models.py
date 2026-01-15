@@ -30,6 +30,19 @@ class Product(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # inventory/models.py  (Product 모델 안에 추가)
+
+    class DefaultTransportMode(models.TextChoices):
+        OCEAN = "OCEAN", "Ocean"
+        AIR = "AIR", "Air"
+
+    default_transport_mode = models.CharField(
+        max_length=10,
+        choices=DefaultTransportMode.choices,
+        default=DefaultTransportMode.OCEAN,
+        help_text="99% 고정인 기본 입고 루트 (AIR/OCEAN).",
+    )
+
     class Meta:
         ordering = ["sku_code"]
 

@@ -6,7 +6,21 @@ from django.http import HttpResponse
 from django.utils.dateparse import parse_date
 
 from inventory.models import InventoryBalance, StockMovement
+# inventory/views.py
 
+from sales.models import SalesInvoice
+from inventory.models import InventoryLot
+
+# inventory/views.py
+
+def _csv_response_with_bom(filename: str) -> HttpResponse:
+    """
+    Excel에서 UTF-8 한글이 깨지지 않도록 BOM을 포함한 CSV 응답을 만든다.
+    """
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("\ufeff")  # ✅ Excel 호환 UTF-8 BOM
+    return response
 
 def inventory_overview(request):
     """
@@ -30,6 +44,28 @@ def inventory_overview(request):
         )
 
     movements = StockMovement.objects.select_related("product").order_by("-created_at")
+    movement_list = []
+
+    for m in movements:
+        partner_display = "-"
+
+        if m.movement_type == "OUT" and m.ref_table == "sales_salesinvoice":
+            try:
+                invoice = SalesInvoice.objects.select_related("customer").get(id=m.ref_id)
+                partner_display = str(invoice.customer)
+            except SalesInvoice.DoesNotExist:
+                partner_display = "(missing invoice)"
+
+        elif m.movement_type == "IN" and m.ref_table == "inventory_inventorylot":
+            try:
+                lot = InventoryLot.objects.select_related("supplier").get(id=m.ref_id)
+                partner_display = str(lot.supplier)
+            except InventoryLot.DoesNotExist:
+                partner_display = "(missing supplier)"
+
+        # 템플릿에서 쓰기 위한 가상 필드
+        m.partner_display = partner_display
+        movement_list.append(m)
     if move_type in {"IN", "OUT", "ADJ"}:
         movements = movements.filter(movement_type=move_type)
     if move_from:
@@ -46,7 +82,7 @@ def inventory_overview(request):
         "move_to": request.GET.get("move_to", ""),
         "move_type": move_type,
         "balances": balances,
-        "movements": movements,
+        "movements": movement_list,
     }
     return render(request, "inventory/inventory_overview.html", context)
 
@@ -61,10 +97,9 @@ def export_balances_csv(request):
         ) | balances.filter(product__name_en__icontains=q) | balances.filter(product__name_ko__icontains=q)
 
     import csv
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="inventory_balances.csv"'
-
+    response = _csv_response_with_bom("inventory_balances.csv")
     w = csv.writer(response)
+
     w.writerow(["SKU", "Name(EN)", "Name(KO)", "Base Unit", "On Hand Qty"])
 
     for b in balances:
@@ -88,9 +123,7 @@ def export_movements_csv(request):
         movements = movements.filter(created_at__date__lte=move_to)
 
     import csv
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="stock_movements.csv"'
-
+    response = _csv_response_with_bom("stock_movements.csv")
     w = csv.writer(response)
     w.writerow(["Created At", "Type", "SKU", "Product Name(EN)", "Product Name(KO)", "Qty", "Ref Table", "Ref ID", "Memo"])
 

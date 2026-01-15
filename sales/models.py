@@ -42,6 +42,18 @@ class SalesInvoice(models.Model):
             total += ln.line_total_php
         return total
 
+    class SalesChannel(models.TextChoices):
+        DIRECT = "DIRECT", "Direct"
+        ONLINE = "ONLINE", "Online"
+        AGENT = "AGENT", "Agent"
+        OTHER = "OTHER", "Other"
+
+    sales_channel = models.CharField(
+        max_length=20,
+        choices=SalesChannel.choices,
+        default=SalesChannel.DIRECT,
+        help_text="판매 출처(채널).",
+    )
 
 class SalesInvoiceLine(models.Model):
     invoice = models.ForeignKey(SalesInvoice, on_delete=models.CASCADE, related_name="lines")
@@ -60,6 +72,36 @@ class SalesInvoiceLine(models.Model):
         if not self.final_unit_price_php:
             return Decimal("0")
         return (self.final_unit_price_php * self.qty_units)
+
+    def save(self, *args, **kwargs):
+        """
+        Draft 단계에서 가격 빈칸 방지:
+        - suggested가 비어 있으면: invoice.quote_batch 기준으로 QuoteLine 최종가를 가져옴
+        - manual(조정가)이 없으면: final = suggested
+        - manual(조정가)이 있으면: final = manual
+        """
+        # 1) suggested 자동 채우기 (invoice에 quote_batch가 연결된 경우만)
+        if self.suggested_unit_price_php is None and self.invoice_id and self.invoice.quote_batch_id:
+            from pricing.models import QuoteLine
+
+            ql = (
+                QuoteLine.objects
+                .filter(batch_id=self.invoice.quote_batch_id, product_id=self.product_id)
+                .order_by("-created_at")
+                .first()
+            )
+            if ql and ql.final_price_php_per_unit is not None:
+                self.suggested_unit_price_php = ql.final_price_php_per_unit
+
+        # 2) final 확정 (단, 재고/매출 잠금은 issue에서만)
+        if self.manual_unit_price_php is not None:
+            self.final_unit_price_php = self.manual_unit_price_php
+        else:
+            # suggested가 None이면 final도 None로 둔다(quote 없을 수 있으므로)
+            self.final_unit_price_php = self.suggested_unit_price_php
+
+        super().save(*args, **kwargs)
+
 
     def __str__(self) -> str:
         return f"{self.invoice.invoice_no} - {self.product.sku_code}"

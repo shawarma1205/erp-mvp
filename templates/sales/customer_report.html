@@ -2,56 +2,60 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Sales Report</title>
+  <title>Customer Purchase Report</title>
 </head>
 <body>
-  <h1>Sales Report (ISSUED invoices)</h1>
+  <h1>Customer Purchase Report (ISSUED invoices)</h1>
 
   <form method="get">
     <label>Date from:</label>
     <input name="date_from" value="{{ date_from }}" placeholder="YYYY-MM-DD">
     <label>Date to:</label>
     <input name="date_to" value="{{ date_to }}" placeholder="YYYY-MM-DD">
+    <label>Customer ID (optional):</label>
+    <input name="customer_id" value="{{ customer_id }}">
     <button type="submit">Filter</button>
   </form>
 
   <p>
-    <a href="{% url 'sales:sales_report_export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}">
+    <a href="{% url 'sales:customer_report_export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}&customer_id={{ customer_id }}">
       Download CSV
     </a>
   </p>
 
-  <h2>By Customer</h2>
+  <h2>By Customer × Product</h2>
   <table border="1" cellpadding="6">
     <thead>
       <tr>
         <th>Customer(EN)</th>
         <th>Customer(KO)</th>
-        <th>Total Sales (PHP)</th>
+        <th>SKU</th>
+        <th>Product(EN)</th>
+        <th>Product(KO)</th>
+        <th>Total Qty (Units)</th>
+        <th>Total Amount (PHP)</th>
       </tr>
     </thead>
     <tbody>
-      {% for r in by_customer %}
+      {% for r in rows %}
       <tr>
-        <td>
-          <a href="{% url 'sales:customer_detail_report' r.customer_id %}?date_from={{ date_from }}&date_to={{ date_to }}">
-            {{ r.customer_en }}
-          </a>
-        </td>
+        <td>{{ r.customer_en }}</td>
         <td>{{ r.customer_ko }}</td>
-        <td><b>{{ r.total_php }}</b></td>
+        <td>{{ r.sku }}</td>
+        <td>{{ r.product_en }}</td>
+        <td>{{ r.product_ko }}</td>
+        <td><b>{{ r.qty_units }}</b></td>
+        <td><b>{{ r.amount_php }}</b></td>
       </tr>
       {% empty %}
-      <tr><td colspan="3">No data.</td></tr>
+      <tr><td colspan="7">No data.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <h3>Grand Total: {{ grand_total }}</h3>
-
   <hr>
 
-  <h2>Recent ISSUED Invoices</h2>
+  <h2>Recent ISSUED Invoices (within filter)</h2>
   <table border="1" cellpadding="6">
     <thead>
       <tr>

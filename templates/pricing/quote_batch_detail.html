@@ -17,8 +17,9 @@
     FX Period: {{ batch.fx_period }} /
     FX (KRW→PHP snapshot): {{ batch.fx_period.krw_to_php }} <br>
     Margin: {{ batch.company_margin_rate }} /
-    Supplier markup: {{ batch.supplier_markup_rate }} /
-    Transport: {{ batch.transport_mode }} ({{ batch.transport_krw_per_kg }} KRW/kg) /
+    Supplier markup: {{ batch.supplier_markup_rate }} <br>
+    Ocean: {{ batch.ocean_krw_per_kg }} KRW/kg /
+    Air: {{ batch.air_krw_per_kg }} KRW/kg <br>
     Round: {{ batch.rounding_unit_php }} PHP
   </p>
 
@@ -27,7 +28,6 @@
   </p>
 
   <hr>
-
   <h2>{{ T.batch_settings }}</h2>
   <form method="post">
     {% csrf_token %}
@@ -41,15 +41,12 @@
     <input name="supplier_markup_rate" value="{{ batch.supplier_markup_rate }}" required>
     <br><br>
 
-    <label>{{ T.transport_mode }}:</label>
-    <select name="transport_mode">
-      <option value="OCEAN" {% if batch.transport_mode == "OCEAN" %}selected{% endif %}>OCEAN</option>
-      <option value="AIR" {% if batch.transport_mode == "AIR" %}selected{% endif %}>AIR</option>
-    </select>
+    <label>{{ T.ocean_krw_per_kg }}:</label>
+    <input name="ocean_krw_per_kg" value="{{ batch.ocean_krw_per_kg }}" required>
     <br><br>
 
-    <label>{{ T.transport_krw_per_kg }}:</label>
-    <input name="transport_krw_per_kg" value="{{ batch.transport_krw_per_kg }}" required>
+    <label>{{ T.air_krw_per_kg }}:</label>
+    <input name="air_krw_per_kg" value="{{ batch.air_krw_per_kg }}" required>
     <br><br>
 
     <label>{{ T.rounding_unit_php }}:</label>
@@ -60,7 +57,6 @@
   </form>
 
   <hr>
-
   <h2>{{ T.add_quote_line }}</h2>
   <form method="post">
     {% csrf_token %}
@@ -84,16 +80,22 @@
     <input name="other_cost_php_total" value="0">
     <br><br>
 
+    <label>{{ T.transport_mode }}:</label>
+    <select name="transport_mode">
+      <option value="">(AUTO: use Product default)</option>
+      <option value="OCEAN">OCEAN</option>
+      <option value="AIR">AIR</option>
+    </select>
+    <br><br>
+
     <label>{{ T.manual_price_php_per_unit }}:</label>
     <input name="manual_price_php_per_unit" value="">
     <br><br>
-
 
     <button type="submit">Create</button>
   </form>
 
   <hr>
-
   <h2>{{ T.lines }}</h2>
   <table border="1" cellpadding="6">
     <thead>
@@ -102,62 +104,59 @@
         <th>SKU</th>
         <th>Name</th>
         <th>Qty</th>
-
         <th>Supplier KRW/unit</th>
         <th>Weight KG</th>
-
+        <th>Mode</th>
         <th>{{ T.suggested_price }}</th>
         <th>{{ T.manual_price }}</th>
         <th>{{ T.price_diff_pct }}</th>
-
         <th>Final PHP/unit</th>
         <th>Action</th>
       </tr>
     </thead>
-
     <tbody>
       {% for ln in lines %}
       <tr>
-  <td>{{ ln.obj.created_at }}</td>
-  <td>{{ ln.obj.product.sku_code }}</td>
-
-  <td>
-    {% if lang == "en" %}
-      {{ ln.obj.product.name_en }}
-    {% else %}
-      {{ ln.obj.product.name_ko }}
-    {% endif %}
-  </td>
-
-  <td>{{ ln.obj.qty_units }}</td>
-  <td>{{ ln.obj.supplier_cost_krw_per_unit }}</td>
-  <td>{{ ln.obj.billable_weight_kg_total }}</td>
-
-  <td>{{ ln.suggested_price }}</td>
-
-  <td>{{ ln.obj.manual_price_php_per_unit|default:"-" }}</td>
-
-  <td>
-    {% if ln.diff_pct is not None %}
-      {{ ln.diff_pct|floatformat:1 }}%
-    {% else %}
-      -
-    {% endif %}
-  </td>
-
-  <td><b>{{ ln.obj.final_price_php_per_unit }}</b></td>
-
-  <td>
-    <form method="post" action="{% url 'pricing:quote_line_delete' batch.id ln.obj.id %}">
-      {% csrf_token %}
-      <button type="submit">Delete</button>
-    </form>
-  </td>
-</tr>
-
+        <td>{{ ln.obj.created_at }}</td>
+        <td>{{ ln.obj.product.sku_code }}</td>
+        <td>
+          {% if lang == "en" %}
+            {{ ln.obj.product.name_en }}
+          {% else %}
+            {{ ln.obj.product.name_ko }}
+          {% endif %}
+        </td>
+        <td>{{ ln.obj.qty_units }}</td>
+        <td>{{ ln.obj.supplier_cost_krw_per_unit }}</td>
+        <td>{{ ln.obj.billable_weight_kg_total }}</td>
+        <td>
+          {% if ln.obj.transport_mode %}
+            {{ ln.obj.transport_mode }}
+          {% else %}
+            AUTO
+          {% endif %}
+        </td>
+        <td>{{ ln.suggested_price }}</td>
+        <td>{{ ln.obj.manual_price_php_per_unit|default:"-" }}</td>
+        <td>
+          {% if ln.diff_pct is not None %}
+            {{ ln.diff_pct|floatformat:1 }}%
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td><b>{{ ln.obj.final_price_php_per_unit }}</b></td>
+        <td>
+          <form method="post" action="{% url 'pricing:quote_line_delete' batch.id ln.obj.id %}">
+            {% csrf_token %}
+            <button type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="12">No lines yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </body>
 </html>
-

@@ -14,8 +14,8 @@ class QuoteBatchAdmin(admin.ModelAdmin):
         "fx_period",
         "company_margin_rate",
         "supplier_markup_rate",
-        "transport_mode",
-        "transport_krw_per_kg",
+        "ocean_krw_per_kg",
+        "air_krw_per_kg",
         "rounding_unit_php",
         "created_at",
     )
@@ -33,7 +33,6 @@ class QuoteBatchAdmin(admin.ModelAdmin):
     export_selected_batches_csv.short_description = "Export selected QuoteBatch to CSV"
 
     inlines = [QuoteLineInline]
-
 
 @admin.register(QuoteLine)
 class QuoteLineAdmin(admin.ModelAdmin):

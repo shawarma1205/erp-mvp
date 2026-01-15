@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice Detail</title>
+</head>
+  <p>
+    <a href="{% url 'sales:invoice_detail_export_csv' invoice.id %}">Download CSV</a>
+  </p>
+<body>
+  <h1>Invoice Detail</h1>
+
+  <p><b>Invoice No:</b> {{ invoice.invoice_no }}</p>
+  <p><b>Customer:</b> {{ invoice.customer }}</p>
+  <p><b>Issue Date:</b> {{ invoice.issue_date }}</p>
+  <p><b>Status:</b> {{ invoice.status }}</p>
+  <p><b>Total (PHP):</b> {{ total_php }}</p>
+
+  <hr>
+
+  <h2>Lines</h2>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Name(EN)</th>
+        <th>Name(KO)</th>
+        <th>Qty</th>
+        <th>Final Unit Price (PHP)</th>
+        <th>Line Total (PHP)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ln in lines %}
+      <tr>
+        <td>{{ ln.product.sku_code }}</td>
+        <td>{{ ln.product.name_en }}</td>
+        <td>{{ ln.product.name_ko }}</td>
+        <td>{{ ln.qty_units }}</td>
+        <td>{{ ln.final_unit_price_php }}</td>
+        <td>
+          {% if ln.final_unit_price_php %}
+            {{ ln.final_unit_price_php|floatformat:2 }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No lines.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="javascript:history.back()">Back</a></p>
+</body>
+</html>
