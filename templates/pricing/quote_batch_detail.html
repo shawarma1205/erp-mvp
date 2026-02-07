@@ -145,7 +145,7 @@
             -
           {% endif %}
         </td>
-        <td><b>{{ ln.obj.final_price_php_per_unit }}</b></td>
+        <td style="text-align: right;"><b>{{ ln.obj.final_price_php_per_unit }}</b></td>
         <td>
           <form method="post" action="{% url 'pricing:quote_line_delete' batch.id ln.obj.id %}">
             {% csrf_token %}

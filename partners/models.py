@@ -22,4 +22,4 @@ class Partner(models.Model):
         ordering = ["name"]
 
     def __str__(self) -> str:
-        return self.name_ko or self.name
+        return self.name

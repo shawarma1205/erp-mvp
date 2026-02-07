@@ -61,7 +61,7 @@ def quote_batch_detail(request, batch_id: int):
         QuoteLine.objects
         .filter(batch=batch)
         .select_related("product")
-        .order_by("-created_at")
+        .order_by("product__sku_code", "id")
     )
 
     display_lines = []
@@ -149,3 +149,7 @@ def quote_line_delete(request, batch_id: int, line_id: int):
     line = get_object_or_404(QuoteLine, id=line_id, batch=batch)
     line.delete()
     return redirect("pricing:quote_batch_detail", batch_id=batch.id)
+
+def quote_batch_list(request):
+    batches = QuoteBatch.objects.select_related("fx_period").order_by("-id")
+    return render(request, "pricing/quote_batch_list.html", {"batches": batches})

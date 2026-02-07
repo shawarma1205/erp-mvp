@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ERP Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #ccc; padding: 16px; border-radius: 8px; }
+    .card h2 { margin: 0 0 10px 0; font-size: 18px; }
+    .card a { display: inline-block; margin-top: 8px; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>OISHIMI ERP</h1>
+  <p class="muted">Quick navigation (local)</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Inventory</h2>
+      <div class="muted">Balances & Stock Movements</div>
+      <a href="{% url 'inventory:inventory_overview' %}">Open</a>
+    </div>
+
+    <div class="card">
+      <h2>Sales Report</h2>
+      <div class="muted">By customer (ISSUED)</div>
+      <a href="{% url 'sales:sales_report' %}">Open</a>
+    </div>
+
+    <div class="card">
+      <h2>Product Performance</h2>
+      <div class="muted">Top products by sales</div>
+      <a href="{% url 'sales:product_performance_overview' %}">Open</a>
+    </div>
+
+    <div class="card">
+      <h2>Pricing (Quote Batch)</h2>
+      <div class="muted">Pricing workbench</div>
+      <!-- 아래 URL name은 프로젝트에 따라 다를 수 있습니다.
+           만약 에러가 나면 pricing 쪽 urls.py에서 name을 알려주면 맞춰드릴게요. -->
+      <a href="{% url 'pricing:quote_batch_list' %}">Open</a>
+    </div>
+
+    <div class="card">
+      <h2>Admin</h2>
+      <div class="muted">Manage master data</div>
+      <a href="/admin/">Open</a>
+    </div>
+  </div>
+</body>
+</html>

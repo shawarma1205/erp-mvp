@@ -297,7 +297,7 @@ def invoice_detail_export_csv(request, invoice_id: int):
     writer.writerow([])
 
     # Line header
-    writer.writerow(["SKU", "Product(EN)", "Product(KO)", "Qty", "Final Unit Price(PHP)", "Line Total(PHP)"])
+    writer.writerow(["SKU", "Product(EN)", "Product(KO)", "Qty", "Price per unit (PHP)", "Total amount (PHP)"])
 
     total_php = Decimal("0")
     for ln in invoice.lines.all():

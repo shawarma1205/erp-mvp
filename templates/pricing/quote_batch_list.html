@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Quote Batches</title>
+</head>
+<body>
+  <h1>Quote Batches</h1>
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>FX Period</th>
+        <th>KRW→PHP</th>
+        <th>Margin</th>
+        <th>Supplier Markup</th>
+        <th>Default Transport</th>
+        <th>Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in batches %}
+      <tr>
+        <td>{{ b.id }}</td>
+        <td><b>{{ b.name }}</b></td>
+        <td>{{ b.fx_period }}</td>
+        <td>{% if b.fx_period %}{{ b.fx_period.krw_to_php }}{% else %}-{% endif %}</td>
+        <td>{{ b.company_margin_rate }}</td>
+        <td>{{ b.supplier_markup_rate }}</td>
+        <td>{{ b.default_transport_mode|default:"-" }}</td>
+        <td>
+          <a href="{% url 'pricing:quote_batch_detail' b.id %}">Open</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8">No quote batches.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="/admin/pricing/quotebatch/">Open in Admin</a></p>
+</body>
+</html>

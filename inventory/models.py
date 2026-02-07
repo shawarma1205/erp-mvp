@@ -8,7 +8,7 @@ class Product(models.Model):
     name_ko = models.CharField(max_length=120, blank=True)
 
     base_unit = models.CharField(max_length=30)  # pack, kg, 500g 등 (문자열로 시작)
-    net_weight_kg_per_unit = models.DecimalField(max_digits=10, decimal_places=2)  # 내용물 기준 kg
+    net_weight_kg_per_unit = models.DecimalField(max_digits=10, decimal_places=4)  # 내용물 기준 kg
     origin_country = models.CharField(
         max_length=2,
         null=True,

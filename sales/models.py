@@ -52,8 +52,7 @@ class SalesInvoice(models.Model):
         max_length=20,
         choices=SalesChannel.choices,
         default=SalesChannel.DIRECT,
-        help_text="판매 출처(채널).",
-    )
+        help_text="판매 출처(채널).", )
 
 class SalesInvoiceLine(models.Model):
     invoice = models.ForeignKey(SalesInvoice, on_delete=models.CASCADE, related_name="lines")

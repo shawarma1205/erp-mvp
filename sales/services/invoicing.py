@@ -123,3 +123,89 @@ def issue_invoice(invoice_id: int) -> SalesInvoice:
     invoice.status = SalesInvoice.ISSUED
     invoice.save(update_fields=["status"])
     return invoice
+
+def cancel_invoice(invoice: SalesInvoice):
+    """
+    Cancel an ISSUED sales invoice and restore inventory.
+
+    Rules:
+    - Only ISSUED invoices can be cancelled
+    - Inventory is restored via IN StockMovement
+    - Original OUT movements are NEVER deleted
+    - Duplicate cancel is blocked
+    """
+
+    if invoice.status != SalesInvoice.ISSUED:
+        raise ValueError("Only ISSUED invoices can be cancelled.")
+
+    with transaction.atomic():
+        # 1. Invoice 상태 변경
+        invoice.status = SalesInvoice.CANCELLED
+        invoice.save(update_fields=["status"])
+
+        # 2. 재고 원복 (IN movement 생성)
+        for line in invoice.lines.all():
+            StockMovement.objects.create(
+                movement_type=StockMovement.IN,
+                product=line.product,
+                qty_units=line.qty_units,
+                ref_table="sales_salesinvoice",
+                ref_id=invoice.id,
+                memo=f"Invoice {invoice.invoice_no} cancelled – stock restored",
+                created_at=timezone.now(),
+            )
+
+# sales/services/invoicing.py (맨 아래에 추가)
+
+@transaction.atomic
+def cancel_invoice(invoice_id: int) -> SalesInvoice:
+    """
+    CANCEL an ISSUED invoice and restore inventory via IN StockMovement.
+    - Only ISSUED can be cancelled
+    - Duplicate cancel is blocked
+    - Original OUT movements are NEVER deleted
+    """
+    invoice = SalesInvoice.objects.select_for_update().get(id=invoice_id)
+
+    if invoice.status != SalesInvoice.ISSUED:
+        raise ValueError("Only ISSUED invoices can be cancelled.")
+
+    # ✅ 방어막: 이미 cancel용 IN movement가 있으면 중복 복구 방지
+    already_restored = StockMovement.objects.filter(
+        movement_type=StockMovement.IN,
+        ref_table="sales_salesinvoice",
+        ref_id=invoice.id,
+    ).exists()
+    if already_restored:
+        raise ValueError(
+            f"Invoice {invoice.invoice_no} already has IN stock movements (restored). "
+            f"Cancel is blocked to prevent double restore."
+        )
+
+    lines = list(invoice.lines.select_related("product").select_for_update())
+    if not lines:
+        raise ValueError("Invoice has no lines.")
+
+    # 1) 재고 원복 (balance row lock + qty add)
+    for ln in lines:
+        if not ln.qty_units or ln.qty_units <= 0:
+            continue
+
+        bal = _ensure_balance_locked(ln.product_id)
+        bal.on_hand_qty_units = bal.on_hand_qty_units + ln.qty_units
+        bal.last_updated_at = timezone.now()
+        bal.save(update_fields=["on_hand_qty_units", "last_updated_at"])
+
+        StockMovement.objects.create(
+            product_id=ln.product_id,
+            movement_type=StockMovement.IN,
+            qty_units=ln.qty_units,
+            ref_table="sales_salesinvoice",
+            ref_id=invoice.id,
+            memo=f"Invoice {invoice.invoice_no} cancelled – stock restored",
+        )
+
+    # 2) invoice 상태 변경
+    invoice.status = SalesInvoice.CANCELLED
+    invoice.save(update_fields=["status"])
+    return invoice
